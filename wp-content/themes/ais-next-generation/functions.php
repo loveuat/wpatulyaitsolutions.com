@@ -3137,6 +3137,26 @@ add_action('rest_api_init', function () {
 function ais_save_lead($request)
 {
     $data = $request->get_json_params();
+    error_log(print_r($data, true));
+    $form_id = 7;
+
+// $entry_meta = array(
+//     array(
+//         'name'  => 'text-1',
+//         'value' => 'Atul'
+//     ),
+//     array(
+//         'name'  => 'email-1',
+//         'value' => 'atul@example.com'
+//     )
+// );
+
+// $entry_id = Forminator_API::add_form_entry(
+//     $form_id,
+//     $entry_meta
+// );
+
+
 
     // check incoming data
     if(empty($data['name']))
