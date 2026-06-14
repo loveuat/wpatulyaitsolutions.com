@@ -3101,7 +3101,24 @@ $pdf->Output($pdf_file, 'F');
     }
 
 }
+add_action('rest_api_init', function () {
 
+    register_rest_route('ais/v1', '/form/(?P<id>\d+)', [
+        'methods'  => 'GET',
+        'callback' => 'ais_get_form',
+        'permission_callback' => '__return_true'
+    ]);
+
+});
+
+function ais_get_form($request)
+{
+    $form_id = (int) $request['id'];
+
+    $fields = Forminator_API::get_form_fields($form_id);
+
+    return rest_ensure_response($fields);
+}
 // Next to WP
 add_action('rest_api_init', function () {
 
