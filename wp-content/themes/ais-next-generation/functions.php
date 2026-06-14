@@ -3115,9 +3115,9 @@ function ais_get_form($request)
 {
     $form_id = (int) $request['id'];
 
-    $fields = Forminator_API::get_form_fields($form_id);
+    $form = Forminator_API::get_form($form_id);
 
-    return rest_ensure_response($fields);
+    return rest_ensure_response($form);
 }
 // Next to WP
 add_action('rest_api_init', function () {
