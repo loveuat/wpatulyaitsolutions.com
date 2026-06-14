@@ -3157,7 +3157,7 @@ function ais_save_lead($request)
     array(
         'name'  => 'email-1',
         'value' => $data['email']
-    )
+    ),
     array(
         'name'  => 'phone-1',
         'value' => $data['phone']
