@@ -11,12 +11,7 @@
 if ( ! defined( 'ABSPATH' ) ) {
 	exit; // Exit if accessed directly.
 }
-add_filter('rest_pre_serve_request', function() {
-    if (empty($_SERVER['HTTP_USER_AGENT'])) {
-        $_SERVER['HTTP_USER_AGENT'] = 'DIGIO';
-    }
-    return false;
-});
+
 define( 'HELLO_ELEMENTOR_VERSION', '3.4.6' );
 define( 'EHP_THEME_SLUG', 'hello-elementor' );
 
@@ -1117,8 +1112,8 @@ function get_margin_options() {
         'my-auto' => 'Auto Vertical',
     );
 }
-add_filter('forminator_form_submit_response', 'my_generate_agreement_pdf', 20, 2);
-add_filter('forminator_form_ajax_submit_response', 'my_generate_agreement_pdf', 20, 2);
+//add_filter('forminator_form_submit_response', 'my_generate_agreement_pdf', 20, 2);
+//add_filter('forminator_form_ajax_submit_response', 'my_generate_agreement_pdf', 20, 2);
 
 function my_generate_agreement_pdf( $response, $form_id ) {
     global $wpdb;
@@ -3106,6 +3101,40 @@ $pdf->Output($pdf_file, 'F');
     }
 
 }
-require HELLO_THEME_PATH . '/theme.php';
 
+// Next to WP
+add_action('rest_api_init', function () {
+
+    register_rest_route(
+        'ais/v1',
+        '/lead',
+        [
+            'methods'  => 'POST',
+            'callback' => 'ais_save_lead',
+            'permission_callback' => '__return_true',
+        ]
+    );
+
+});
+
+function ais_save_lead($request)
+{
+    $data = $request->get_json_params();
+
+    // check incoming data
+    if(empty($data['name']))
+    {
+        return new WP_Error(
+            'missing_name',
+            'Name required',
+            ['status' => 400]
+        );
+    }
+
+    return [
+        'success' => true,
+        'data' => $data
+    ];
+}
+require HELLO_THEME_PATH . '/theme.php';
 HelloTheme\Theme::instance();
