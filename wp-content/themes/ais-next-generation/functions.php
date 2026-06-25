@@ -3101,6 +3101,18 @@ $pdf->Output($pdf_file, 'F');
     }
 
 }
+add_action('init', function () {
+
+    header('Access-Control-Allow-Origin: *');
+    header('Access-Control-Allow-Methods: GET, POST, OPTIONS');
+    header('Access-Control-Allow-Headers: Content-Type, Authorization');
+
+    if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
+        status_header(200);
+        exit();
+    }
+
+});
 add_action('rest_api_init', function () {
 
     register_rest_route('ais/v1', '/form/(?P<id>\d+)', [
@@ -3137,40 +3149,133 @@ add_action('rest_api_init', function () {
 function ais_save_lead($request)
 {
     $data = $request->get_json_params();
-    // check incoming data
-    // if(empty($data['name']))
-    // {
-    //     return new WP_Error(
-    //         'missing_name',
-    //         'Name required',
-    //         ['status' => 400]
-    //     );
-    // }
-     error_log(print_r($data, true));
-    $form_id = $data['form_id'];
+    $captcha = $data['captcha'] ?? '';
 
-	$entry_meta = array(
-    array(
-        'name'  => 'name-1',
-        'value' => $data['name']
-    ),
-    array(
-        'name'  => 'email-1',
-        'value' => $data['email']
-    ),
-    array(
-        'name'  => 'phone-1',
-        'value' => $data['phone']
-    )
-	);
-
-$entry_id = Forminator_API::add_form_entry(
-    $form_id,
-    $entry_meta
+$response = wp_remote_post(
+    'https://challenges.cloudflare.com/turnstile/v0/siteverify',
+    [
+        'body' => [
+            'secret' => TURNSTILE_SECRET,
+            'response' => $captcha
+        ]
+    ]
 );
+
+$body = json_decode(
+    wp_remote_retrieve_body($response),
+    true
+);
+
+if (empty($body['success'])) {
+
+    return new WP_Error(
+        'captcha_failed',
+        'Captcha verification failed',
+        ['status' => 400]
+    );
+}
+    if (empty($data['form_id'])) {
+        return new WP_Error(
+            'missing_form_id',
+            'Form ID is required',
+            ['status' => 400]
+        );
+    }
+
+    if (empty($data['fields']) || !is_array($data['fields'])) {
+        return new WP_Error(
+            'missing_fields',
+            'Fields are required',
+            ['status' => 400]
+        );
+    }
+
+    $form_id = (int) $data['form_id'];
+    $fields = $data['fields'];
+
+    /**
+     * Form 1 Validation
+     */
+    if ($form_id === 9) {
+
+        if (empty($fields['name-1'])) {
+            return new WP_Error(
+                'name_required',
+                'Name is required',
+                ['status' => 400]
+            );
+        }
+
+        if (empty($fields['email-1'])) {
+            return new WP_Error(
+                'email_required',
+                'Email is required',
+                ['status' => 400]
+            );
+        }
+
+        if (!is_email($fields['email-1'])) {
+            return new WP_Error(
+                'invalid_email',
+                'Invalid email address',
+                ['status' => 400]
+            );
+        }
+    }
+
+    /**
+     * Form 2 Validation
+     */
+    if ($form_id === 7) {
+
+        if (empty($fields['company-1'])) {
+            return new WP_Error(
+                'company_required',
+                'Company name is required',
+                ['status' => 400]
+            );
+        }
+
+        if (
+            !empty($fields['website-1']) &&
+            !filter_var($fields['website-1'], FILTER_VALIDATE_URL)
+        ) {
+            return new WP_Error(
+                'invalid_website',
+                'Invalid website URL',
+                ['status' => 400]
+            );
+        }
+
+        if (empty($fields['message-1'])) {
+            return new WP_Error(
+                'message_required',
+                'Message is required',
+                ['status' => 400]
+            );
+        }
+    }
+
+    $entry_meta = [];
+
+    foreach ($fields as $field_name => $field_value) {
+
+        $entry_meta[] = [
+            'name'  => sanitize_text_field($field_name),
+            'value' => is_array($field_value)
+                ? wp_json_encode($field_value)
+                : sanitize_text_field($field_value)
+        ];
+    }
+
+    $entry_id = Forminator_API::add_form_entry(
+        $form_id,
+        $entry_meta
+    );
+
     return [
         'success' => true,
-        'data' => $data
+        'entry_id' => $entry_id
     ];
 }
 require HELLO_THEME_PATH . '/theme.php';
